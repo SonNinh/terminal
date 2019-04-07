@@ -4,10 +4,7 @@ import subprocess
 
 
 class Screen(object):
-    UP = -1
-    DOWN = 1
-
-    def __init__(self, items):
+    def __init__(self):
         self.window = None
 
         self.width = 0
@@ -21,7 +18,7 @@ class Screen(object):
         # f.close()
         self.prompt_name = 'intek-sh$ '
         self.text = 'intek-sh$ '
-        self.lk=65
+        self.lk=0
         self.touch_ending = True
         self.last_char = -1
         self.up_last = -1
@@ -29,87 +26,57 @@ class Screen(object):
         self.command = ''
         self.lim_of_arrow = 0
         self.pos_cursor_str = 0
-        self.run()
 
     def init_curses(self):
-        """Setup the curses"""
         self.window = curses.initscr()
         self.window.keypad(True)
         self.window.scrollok(True)
         curses.noecho()
         curses.cbreak()
-
         curses.start_color()
         curses.init_pair(1, curses.COLOR_CYAN, curses.COLOR_BLACK)
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)
-
         self.current = curses.color_pair(2)
-
         self.height, self.width = self.window.getmaxyx()
-
-    def run(self):
-        """Continue running the TUI until get interrupted"""
-        try:
-            self.input_stream()
-        except KeyboardInterrupt:
-            pass
-        finally:
-            curses.endwin()
 
     def input_stream(self):
-        self.window.clear()
-        self.window.refresh()
-        self.display()
-        # self.window.addstr(0, 0, self.text[-self.height*self.width-1:], curses.color_pair(1))
-        """Waiting an input and run a proper method according to type of input"""
+        new_key = self.window.getch()
 
-        while True:
-            # self.display()
-            new_key = self.window.getch()
-
-            self.lk = new_key
-            if new_key == curses.KEY_UP:
-                if self.touch_ending:
-                    self.last_char = self.up_last      
-                    self.display()       
-            elif new_key == curses.KEY_DOWN:
-                self.last_char = self.down_last
-                self.display()
-            elif new_key == curses.ascii.ESC:
-                break
-            elif new_key == 10:
-                self.display()
-                self.last_char = -1
-                self.up_last = -1
-                self.down_last = -1
-                self.play_subprocess()
-                self.display()
-            elif new_key < 127 and new_key > 31:
-                self.last_char = -1
-                self.up_last = -1
-                self.down_last = -1
-                self.display_key(new_key)
-                self.display()
-            elif new_key == 260 and self.pos_cursor_str > self.lim_of_arrow:
-                self.pos_cursor_str -= 1
-                self.move_cursor_back()
-            elif new_key == 261 and self.pos_cursor_str < 0:
-                self.pos_cursor_str += 1
-                self.move_cursor_forward()
-            elif new_key == 127:
-                self.delete_char()
-                self.display()
-            else:
-                self.display()
+        self.lk = new_key
+        if new_key == curses.KEY_UP:
+            if self.touch_ending:
+                self.last_char = self.up_last      
+                self.display()       
+        elif new_key == curses.KEY_DOWN:
+            self.last_char = self.down_last
+            self.display()
+        elif new_key == 10:
+            self.display()
+            self.last_char = -1
+            self.up_last = -1
+            self.down_last = -1
+            self.play_subprocess()
+            self.display()
+        elif new_key < 127 and new_key > 31:
+            self.last_char = -1
+            self.up_last = -1
+            self.down_last = -1
+            self.display_key(new_key)
+            self.display()
+        elif new_key == 260 and self.pos_cursor_str > self.lim_of_arrow:
+            self.pos_cursor_str -= 1
+            self.move_cursor_back()
+        elif new_key == 261 and self.pos_cursor_str < 0:
+            self.pos_cursor_str += 1
+            self.move_cursor_forward()
+        elif new_key == 127:
+            self.delete_char()
+            self.display()
+        else:
+            self.display()
 
     def display(self):
-        """Display the items on window"""
-        # self.window.clear()
-        # self.window.refresh()
         self.height, self.width = self.window.getmaxyx()
-
-        # self.window.move(0, 0)
-        # self.window.deleteln()
         self.window.move(self.height-1, 0)
         self.window.deleteln()
         self.get_top_bottom()
@@ -189,7 +156,10 @@ class Screen(object):
         command_for_sub = self.command.split()
         self.command = ''
         if command_for_sub:
-            self.text += subprocess.run(command_for_sub, stdout=subprocess.PIPE).stdout.decode()
+            try:
+                self.text += subprocess.run(command_for_sub, stdout=subprocess.PIPE).stdout.decode()
+            except FileNotFoundError:
+                pass
             if self.text[-1] != '\n':
                 self.text += '\n'
         self.text += self.prompt_name
@@ -204,9 +174,15 @@ class Screen(object):
                 self.text = self.text[:self.pos_cursor_str-1]
                 self.command = self.command[:self.pos_cursor_str-1]
 
+
 def main():
-    items = ['{}. Itemfgndfrtdfvbar'.format(num) for num in range(10)]
-    Screen(items)
+    the_shell = Screen()
+    the_shell.display()
+    while True:
+        the_shell.input_stream()
+        if the_shell.lk == curses.ascii.ESC:
+            curses.endwin()
+            break
 
 
 if __name__ == '__main__':

@@ -40,46 +40,57 @@ class Screen(object):
         self.height, self.width = self.window.getmaxyx()
 
     def input_stream(self):
+        '''
+        main function 
+        '''
         new_key = self.window.getch()
 
         self.lk = new_key
         if new_key == curses.KEY_UP:
             if self.touch_ending:
+                # if all line in window have been filled
                 self.last_char = self.up_last      
-                self.display()       
+                self.update_screen()       
         elif new_key == curses.KEY_DOWN:
             self.last_char = self.down_last
-            self.display()
+            self.update_screen()
         elif new_key == 10:
-            self.display()
+            # if button 'enter' was pressed
+            self.update_screen()
             self.last_char = -1
             self.up_last = -1
             self.down_last = -1
             self.play_subprocess()
-            self.display()
+            self.update_screen()
         elif new_key < 127 and new_key > 31:
+            # if normal key was pressed
             self.last_char = -1
             self.up_last = -1
             self.down_last = -1
-            self.display_key(new_key)
-            self.display()
+            self.insert_new_key(new_key)
+            self.update_screen()
         elif new_key == 260 and self.pos_cursor_str > self.lim_of_arrow:
+            # if left arrow was pressed and cursor's position has not been over upper limitation  
             self.pos_cursor_str -= 1
             self.move_cursor_back()
         elif new_key == 261 and self.pos_cursor_str < 0:
+            # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
             self.move_cursor_forward()
         elif new_key == 127:
+            # if button 'delete' was pressed
             self.delete_char()
-            self.display()
+            self.update_screen()
         else:
-            self.display()
+            # any thing else was pressed
+            self.update_screen()
 
-    def display(self):
+    def update_screen(self):
+        '''
+        update window by new conntent
+        '''
         self.height, self.width = self.window.getmaxyx()
-        self.window.move(self.height-1, 0)
-        self.window.deleteln()
-        self.get_top_bottom()
+        self.update_upper_line()
 
         if self.last_char+1 >= 0: 
             self.window.addstr(0, 0, self.text[self.last_char-self.height*self.width:], curses.color_pair(1))
@@ -92,6 +103,27 @@ class Screen(object):
         else:
             self.touch_ending = False
 
+        self.update_lower_line()
+
+        for _ in range(-self.pos_cursor_str):
+            self.move_cursor_back()
+            self.window.refresh()
+        # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(curses.getsyx()[1])
+        # self.window.addstr(0, self.width-len(txt)-1, txt, curses.color_pair(2))
+        # self.window.refresh()
+
+    def update_upper_line(self):
+        i = self.last_char + 1
+        if self.text[i] == '\n':
+            i += 1
+        for n in range(self.width):
+            if i+n < 0:
+                self.down_last = i+n
+                if self.text[i+n] == '\n':
+                    self.down_last = i+n-1
+                    break
+
+    def update_lower_line(self):
         if self.text[self.last_char] == '\n':
             self.up_last -= 1
         else:
@@ -105,24 +137,6 @@ class Screen(object):
                         self.up_last -= 1
                 except IndexError:
                     self.up_last = self.last_char
-
-        for _ in range(-self.pos_cursor_str):
-            self.move_cursor_back()
-            self.window.refresh()
-        # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(curses.getsyx()[1])
-        # self.window.addstr(0, self.width-len(txt)-1, txt, curses.color_pair(2))
-        # self.window.refresh()
-
-    def get_top_bottom(self):
-        i = self.last_char + 1
-        if self.text[i] == '\n':
-            i += 1
-        for n in range(self.width):
-            if i+n < 0:
-                self.down_last = i+n
-                if self.text[i+n] == '\n':
-                    self.down_last = i+n-1
-                    break
 
     def move_cursor_back(self):
         y_cursor, x_cursor = curses.getsyx()
@@ -139,7 +153,7 @@ class Screen(object):
         else:
             self.window.move(y_cursor, x_cursor+1)
 
-    def display_key(self, new_key):
+    def insert_new_key(self, new_key):
         self.lim_of_arrow -= 1
         if self.pos_cursor_str == 0:
             self.text += chr(new_key)
@@ -157,7 +171,7 @@ class Screen(object):
         self.command = ''
         if command_for_sub:
             try:
-                self.text += subprocess.run(command_for_sub, stdout=subprocess.PIPE).stdout.decode()
+                self.text += subprocess.run(command_for_sub, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode()
             except FileNotFoundError:
                 pass
             if self.text[-1] != '\n':
@@ -177,7 +191,7 @@ class Screen(object):
 
 def main():
     the_shell = Screen()
-    the_shell.display()
+    the_shell.update_screen()
     while True:
         the_shell.input_stream()
         if the_shell.lk == curses.ascii.ESC:

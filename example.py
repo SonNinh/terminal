@@ -11,14 +11,14 @@ class Screen(object):
         self.height = 0
 
         self.init_curses()
-         
+
         # self.text = subprocess.run('python3', stdout=subprocess.PIPE).stdout.decode()
         # f = open('text', 'r')
         # self.text = f.read()
         # f.close()
         self.prompt_name = 'intek-sh$ '
         self.text = 'intek-sh$ '
-        self.lk=0
+        self.lk = 0
         self.touch_ending = True
         self.last_char = -1
         self.up_last = -1
@@ -26,6 +26,8 @@ class Screen(object):
         self.command = ''
         self.lim_of_arrow = 0
         self.pos_cursor_str = 0
+        self.in_sub = False
+        self.p = None
 
     def init_curses(self):
         self.window = curses.initscr()
@@ -41,7 +43,7 @@ class Screen(object):
 
     def input_stream(self):
         '''
-        main function 
+        main function
         '''
         new_key = self.window.getch()
 
@@ -49,8 +51,8 @@ class Screen(object):
         if new_key == curses.KEY_UP:
             if self.touch_ending:
                 # if all line in window have been filled
-                self.last_char = self.up_last      
-                self.update_screen()       
+                self.last_char = self.up_last
+                self.update_screen()
         elif new_key == curses.KEY_DOWN:
             self.last_char = self.down_last
             self.update_screen()
@@ -70,14 +72,14 @@ class Screen(object):
             self.insert_new_key(new_key)
             self.update_screen()
         elif new_key == 260 and self.pos_cursor_str > self.lim_of_arrow:
-            # if left arrow was pressed and cursor's position has not been over upper limitation  
+            # if left arrow was pressed and cursor's position has not been over upper limitation
             self.pos_cursor_str -= 1
             self.move_cursor_back()
         elif new_key == 261 and self.pos_cursor_str < 0:
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
             self.move_cursor_forward()
-        elif new_key == 127:
+        elif new_key == 263:
             # if button 'delete' was pressed
             self.delete_char()
             self.update_screen()
@@ -92,10 +94,13 @@ class Screen(object):
         self.height, self.width = self.window.getmaxyx()
         self.update_upper_line()
 
-        if self.last_char+1 >= 0: 
-            self.window.addstr(0, 0, self.text[self.last_char-self.height*self.width:], curses.color_pair(1))
+        win_area = self.height*self.width
+        if self.last_char+1 >= 0:
+            self.window.addstr(0, 0, self.text[self.last_char-win_area:],
+                               curses.color_pair(1))
         else:
-            self.window.addstr(0, 0, self.text[self.last_char-self.height*self.width:self.last_char+1], curses.color_pair(1))
+            self.window.addstr(0, 0, self.text[self.last_char-win_area:self.last_char+1],
+                               curses.color_pair(1))
         self.window.refresh()
         self.window.clrtobot()
         if curses.getsyx()[0] == self.height-1:
@@ -108,7 +113,8 @@ class Screen(object):
         for _ in range(-self.pos_cursor_str):
             self.move_cursor_back()
             self.window.refresh()
-        # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(curses.getsyx()[1])
+
+        # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(self.lk)
         # self.window.addstr(0, self.width-len(txt)-1, txt, curses.color_pair(2))
         # self.window.refresh()
 
@@ -159,24 +165,53 @@ class Screen(object):
             self.text += chr(new_key)
             self.command += chr(new_key)
         else:
-            self.text = self.text[:self.pos_cursor_str] + chr(new_key) + self.text[self.pos_cursor_str:]
-            self.command = self.command[:self.pos_cursor_str] + chr(new_key) + self.command[self.pos_cursor_str:]
-    
-            
+            self.text = self.text[:self.pos_cursor_str] + chr(new_key) +\
+                        self.text[self.pos_cursor_str:]
+            self.command = (self.command[:self.pos_cursor_str] + chr(new_key) +
+                            self.command[self.pos_cursor_str:])
+
     def play_subprocess(self):
         self.lim_of_arrow = 0
         self.pos_cursor_str = 0
         self.text += '\n'
         command_for_sub = self.command.split()
-        self.command = ''
+
         if command_for_sub:
-            try:
-                self.text += subprocess.run(command_for_sub, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE).stdout.decode()
-            except FileNotFoundError:
-                pass
+            # try:
+            if not self.in_sub:
+                self.p = subprocess.Popen(command_for_sub,
+                                     stdout=subprocess.PIPE,
+                                     stderr=subprocess.PIPE,
+                                     stdin=subprocess.PIPE)
+            else:
+                # self.p.stdin.write('print(123)\n'.encode())
+                self.p.stdin.write((self.command+'\n').encode())
+                self.p.stdin.flush()
+                res_from_sub = self.p.stdout.readline().decode()
+                self.text += res_from_sub
+
+            if self.command == 'python3 -i':
+                self.in_sub = True
+            elif self.command == 'exit()':
+                self.in_sub = False
+                # res_from_sub = self.p.communicate(self.command.encode())
+
+            # if self.in_sub:
+            #     self.p.stdin.write('print(123)\n'.encode())
+            #     self.p.stdin.write((self.command+'\n').encode())
+            #     self.p.stdin.flush()
+            #     res_from_sub = self.p.stdout.readline().decode()
+            #     # res_from_sub = p.communicate()
+
+            # self.text += res_from_sub
+            # except Exception:
+            #     pass
+
             if self.text[-1] != '\n':
                 self.text += '\n'
-        self.text += self.prompt_name
+        self.command = ''
+        if not self.in_sub:
+            self.text += self.prompt_name
 
     def delete_char(self):
         if self.pos_cursor_str > self.lim_of_arrow:

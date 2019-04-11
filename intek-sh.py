@@ -41,7 +41,9 @@ def shellLoop(stdscr):
         #     stdscr.addstr(curses.getsyx()[0]+1, 0, promtName, curses.color_pair(1))
         stdscr.addstr(0, 0, 'asdasdaaaaaaaaaaaaaaaaaaaaaaaaaaadfgfgfgdfgdgdg', curses.color_pair(1))
         stdscr.refresh()
-        stdscr.addstr(4, 0, 'as{}'.format(stdscr.getmaxyx()[0]), curses.color_pair(1))
+        # stdscr.insstr(0, 0, 'ninh son ninh son sdsfsfsfsjfshfk sdfonsd  ksd ksb sss')
+        # stdscr.refresh()
+        stdscr.addstr(curses.getsyx()[0], curses.getsyx()[1], 'as{}'.format(stdscr.getmaxyx()[0]), curses.color_pair(1))
         # Refresh the screen
         stdscr.refresh()
         # sleep(1)

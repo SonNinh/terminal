@@ -79,7 +79,8 @@ class Screen(object):
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
             self.move_cursor_forward()
-        elif new_key == 263:
+        elif new_key == 127:
+            #263 ubuntu
             # if button 'delete' was pressed
             self.delete_char()
             self.update_screen()
@@ -183,6 +184,9 @@ class Screen(object):
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE,
                                      stdin=subprocess.PIPE)
+                # res_from_sub = self.p.stdout.read().decode()
+                # self.text += res_from_sub
+
             else:
                 # self.p.stdin.write('print(123)\n'.encode())
                 self.p.stdin.write((self.command+'\n').encode())

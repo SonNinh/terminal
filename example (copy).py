@@ -2,13 +2,8 @@ import curses
 import curses.textpad
 import subprocess
 from threading import Thread
-from time import sleep
+import time
 from datetime import datetime
-
-from os import environ
-import cdCommand
-import printenvCommand
-from math import fabs
 
 
 class Screen(object):
@@ -17,9 +12,15 @@ class Screen(object):
 
         self.width = 0
         self.height = 0
+
         self.init_curses()
-        self.prompt_name = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
-        self.text = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
+
+        # self.text = subprocess.run('python3', stdout=subprocess.PIPE).stdout.decode()
+        # f = open('text', 'r')
+        # self.text = f.read()
+        # f.close()
+        self.prompt_name = 'intek-sh$ '
+        self.text = 'intek-sh$ '
         self.lk = 0
         self.touch_ending = True
         self.last_char = -1
@@ -29,9 +30,13 @@ class Screen(object):
         self.lim_of_arrow = 0
         self.pos_cursor_str = 0
         self.in_sub = False
-        self.p = None
+        self.p = subprocess.Popen(['python3', '-i'],
+                                  stdout=subprocess.PIPE,
+                                  stderr=subprocess.PIPE,
+                                  stdin=subprocess.PIPE)
+        thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
+        thread1.start()
         self.turnback = ''
-        self.end_thread = False
 
     def init_curses(self):
         self.window = curses.initscr()
@@ -79,27 +84,15 @@ class Screen(object):
         elif new_key == 260 and self.pos_cursor_str > self.lim_of_arrow:
             # if left arrow was pressed and cursor's position has not been over upper limitation
             self.pos_cursor_str -= 1
-            # self.move_cursor_back()
+            self.move_cursor_back()
         elif new_key == 261 and self.pos_cursor_str < 0:
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
-            # self.move_cursor_forward()
+            self.move_cursor_forward()
         elif new_key == 263:
-            # ubuntu 263
             # if button 'delete' was pressed
             self.delete_char()
             # self.update_screen()
-        elif new_key == 262:
-            # home button
-            # delta = self.pos_cursor_str - self.lim_of_arrow
-            # y_cursor, x_cursor = curses.getsyx()
-            # a = (delta - x_cursor) // self.width
-            # b = (delta - x_cursor) % self.width
-            #
-            # self.window.move(y_cursor-1-a, self.width-b)
-            self.pos_cursor_str = self.lim_of_arrow
-        elif new_key == 360:
-            self.pos_cursor_str = 0
         else:
             # any thing else was pressed
             self.update_screen()
@@ -129,12 +122,12 @@ class Screen(object):
 
         self.update_lower_line()
 
-        # for _ in range(-self.pos_cursor_str):
-        self.move_cursor_back()
-        self.window.refresh()
+        for _ in range(-self.pos_cursor_str):
+            self.move_cursor_back()
+            self.window.refresh()
 
         # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(self.lk)
-        # self.window.addstr(curses.getsyx()[0], curses.getsyx()[1], txt, curses.color_pair(2))
+        # self.window.addstr(0, self.width-len(txt)-1, txt, curses.color_pair(2))
         # self.window.refresh()
 
     def update_upper_line(self):
@@ -165,13 +158,11 @@ class Screen(object):
 
     def move_cursor_back(self):
         y_cursor, x_cursor = curses.getsyx()
-
-        if -self.pos_cursor_str <= x_cursor:
-            self.window.move(y_cursor, x_cursor+self.pos_cursor_str)
+        if x_cursor == 0:
+            if y_cursor != 0:
+                self.window.move(y_cursor-1, self.width-1)
         else:
-            a = fabs(self.pos_cursor_str + x_cursor) // (self.width+1)
-            b = fabs(self.pos_cursor_str + x_cursor+1) % (self.width)
-            self.window.move(y_cursor-1-int(a), self.width-int(b)-1)
+            self.window.move(y_cursor, x_cursor-1)
 
     def move_cursor_forward(self):
         y_cursor, x_cursor = curses.getsyx()
@@ -192,64 +183,62 @@ class Screen(object):
                             self.command[self.pos_cursor_str:])
 
     def threadout(self, name, output):
-        while not self.end_thread:
+        while True:
+
             o = output.readline().decode()
+
+            # with open('asd', 'w') as f:
+            #     f.write(str(datetime.now().second))
+            #     f.close()
             if o:
+                # self.turnback = None
+
+                with open('asd', 'w+') as f:
+                    f.write(o)
+                    f.close()
                 self.turnback += o
                 self.update_screen()
-        self.end_thread = False
-
-    def run_by_curses(self, command_ls):
-        if command_ls[0] == 'cd':
-            command_ls.pop(0)
-            self.text += cdCommand.chDir(command_ls)
-            self.prompt_name = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
-        elif command_ls[0] == 'printenv':
-            command_ls.pop(0)
-            for env in printenvCommand.printEnv(command_ls):
-                self.text += env
-        else:
-            self.p = subprocess.Popen(command_ls,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT,
-                                      stdin=subprocess.PIPE)
-
-            if self.command == 'python3 -i':
-                self.in_sub = True
-                self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
-                self.thread1.start()
-            else:
-                self.text += self.p.communicate()[0].decode()
-                self.p.terminate()
-
-    def run_by_subshell(self):
-        if self.command == 'exit()':
-            self.end_thread = True
-            self.in_sub = False
-            self.p.stdin.write(('print("Bye")\n').encode())
-            self.p.stdin.flush()
-            sleep(0.5)
-            self.p.stdin.close()
-            self.p.terminate()
-        else:
-            self.p.stdin.write((self.command+'\n').encode())
-            self.p.stdin.flush()
 
     def play_subprocess(self):
         self.lim_of_arrow = 0
         self.pos_cursor_str = 0
         self.text += '\n'
-        command_ls = self.command.split()
-        try:
-            if not self.in_sub:
-                self.run_by_curses(command_ls)
-            else:
-                self.run_by_subshell()
+        command_for_sub = self.command.split()
 
-            if self.text[-1] != '\n':
-                self.text += '\n'
-        except Exception:
-            pass
+        if command_for_sub:
+            self.p.stdin.write((self.command+'\n').encode())
+            self.p.stdin.flush()
+
+        # if command_for_sub:
+        #     if not self.in_sub:
+        #         self.p = subprocess.Popen(command_for_sub,
+        #                                   stdout=subprocess.PIPE,
+        #                                   stderr=subprocess.PIPE,
+        #                                   stdin=subprocess.PIPE)
+        #     else:
+        #         self.p.stdin.write((self.command+'\n').encode())
+        #         self.p.stdin.flush()
+        #         # while True:
+        #         #     line = self.p.stdout.readline().decode()
+        #         #     if line == '':
+        #         #         break
+        #         #     else:
+        #         #         self.text += line
+        #         # for line in self.p.stdout:
+        #         #     self.text += line.decode()
+        #         # self.text += self.p.stdout.readline().decode()
+        #
+        #     if self.command == 'python3 -i':
+        #         self.in_sub = True
+        #         # thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
+        #         # thread1.start()
+        #     elif self.command == 'exit()':
+        #         self.in_sub = False
+        #         # res_from_sub = self.p.communicate(self.command.encode())
+        #
+        #
+        #     if self.text[-1] != '\n':
+        #         self.text += '\n'
         self.command = ''
         if not self.in_sub:
             self.text += self.prompt_name
@@ -269,13 +258,10 @@ def main():
     the_shell = Screen()
     the_shell.update_screen()
     while True:
-        try:
-            the_shell.input_stream()
-            if the_shell.lk == curses.ascii.ESC:
-                curses.endwin()
-                break
-        except KeyboardInterrupt:
+        the_shell.input_stream()
+        if the_shell.lk == curses.ascii.ESC:
             curses.endwin()
+            break
 
 
 if __name__ == '__main__':

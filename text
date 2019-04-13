@@ -1,0 +1,36 @@
+Sons-MacBook-Air:Desktop SonNinh$ ls
+BO-KIT-THUC-TAP-MICRO-850.pdf
+Best Selection
+Chapter 2 fuzzy sets.pptx
+DAMH_MAU_01_Bia-ngoai.pdf
+DP:ASI_S7_300.pages
+DP:ASI_S7_300.pdf
+INTEK
+MANG_PLC_BIA.pdf
+SCADA_NINH_NGOC_BA_SON.zip
+Screen Shot 2018-10-02 at 23.15.04.png
+Screen Shot 2018-10-02 at 23.15.30.png
+Screen Shot 2018-10-02 at 23.25.26.png
+Screen Shot 2019-01-17 at 15.08.34.png
+Screen Shot 2019-01-24 at 17.26.48.png
+bao_cao_mangPLC.pdf
+comment.rtf
+fuzzy_pendulum.slx
+machdongluc.png
+s71.png
+ubuntu-18.04.1-desktop-amd64.iso
+Sons-MacBook-Air:Desktop SonNinh$ cd INTEK/
+Sons-MacBook-Air:INTEK SonNinh$ ls
+minish		terminal
+Sons-MacBook-Air:INTEK SonNinh$ cd terminal/
+Sons-MacBook-Air:terminal SonNinh$ ls
+check.py	example.py	intek-sh.py	text
+Sons-MacBook-Air:terminal SonNinh$ python3 check.py 
+input: 127
+Traceback (most recent call last):
+  File "check.py", line 9, in <module>
+    print(text[-int(ls[0])-3:-int(ls[0])+1] + ':' + text[-int(ls[1])-3:-int(ls[1])+1])
+IndexError: list index out of range
+
+
+Sons-MacBook-Air:terminal SonNinh$

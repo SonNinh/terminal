@@ -8,6 +8,7 @@ from datetime import datetime
 from os import environ
 import cdCommand
 import printenvCommand
+import globbing
 from math import fabs
 
 
@@ -84,8 +85,8 @@ class Screen(object):
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
             # self.move_cursor_forward()
-        elif new_key == 263:
-            # ubuntu 263
+        elif new_key == 127:
+            # ubuntu 263 Macos 127
             # if button 'delete' was pressed
             self.delete_char()
             # self.update_screen()
@@ -209,18 +210,20 @@ class Screen(object):
             for env in printenvCommand.printEnv(command_ls):
                 self.text += env
         else:
-            self.p = subprocess.Popen(command_ls,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT,
-                                      stdin=subprocess.PIPE)
+            for path_name in globbing.main(self.command):
+                self.text += path_name
+            # self.p = subprocess.Popen(command_ls,
+            #                           stdout=subprocess.PIPE,
+            #                           stderr=subprocess.STDOUT,
+            #                           stdin=subprocess.PIPE)
 
-            if self.command == 'python3 -i':
-                self.in_sub = True
-                self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
-                self.thread1.start()
-            else:
-                self.text += self.p.communicate()[0].decode()
-                self.p.terminate()
+            # if self.command == 'python3 -i':
+            #     self.in_sub = True
+            #     self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
+            #     self.thread1.start()
+            # else:
+            #     self.text += self.p.communicate()[0].decode()
+            #     self.p.terminate()
 
     def run_by_subshell(self):
         if self.command == 'exit()':

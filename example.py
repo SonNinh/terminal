@@ -9,6 +9,7 @@ from os import environ
 import cdCommand
 import printenvCommand
 import globbing
+import dynamic
 from math import fabs
 
 
@@ -62,6 +63,9 @@ class Screen(object):
         elif new_key == curses.KEY_DOWN:
             self.last_char = self.down_last
             # self.update_screen()
+        elif new_key == 9:
+            # button 'tab'
+            self.dynamic_completion()
         elif new_key == 10:
             # if button 'enter' was pressed
             # self.update_screen()
@@ -84,26 +88,35 @@ class Screen(object):
         elif new_key == 261 and self.pos_cursor_str < 0:
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
-            # self.move_cursor_forward()
-        elif new_key == 127:
+        elif new_key == 263:
             # ubuntu 263 Macos 127
             # if button 'delete' was pressed
             self.delete_char()
             # self.update_screen()
         elif new_key == 262:
             # home button
-            # delta = self.pos_cursor_str - self.lim_of_arrow
-            # y_cursor, x_cursor = curses.getsyx()
-            # a = (delta - x_cursor) // self.width
-            # b = (delta - x_cursor) % self.width
-            #
-            # self.window.move(y_cursor-1-a, self.width-b)
             self.pos_cursor_str = self.lim_of_arrow
         elif new_key == 360:
             self.pos_cursor_str = 0
         else:
             # any thing else was pressed
             self.update_screen()
+
+    def dynamic_completion(self):
+        start_idx, ls_of_possibles = dynamic.complete(self.command, self.pos_cursor_str, environ)
+        if len(ls_of_possibles) == 1:
+            if self.pos_cursor_str != 0:
+                self.command = self.command[:start_idx] + ls_of_possibles[0] + self.command[self.pos_cursor_str:]
+                self.text = self.text[:start_idx] + ls_of_possibles[0] + self.text[self.pos_cursor_str:]
+            else:
+                self.command = self.command[:start_idx] + ls_of_possibles[0]
+                self.text = self.text[:start_idx] + ls_of_possibles[0]
+            self.lim_of_arrow = -len(self.command)
+        elif len(ls_of_possibles) > 1:
+            for pos in ls_of_possibles:
+                self.text += ('\n'+pos)
+            
+            self.text += ('\n' + self.prompt_name + self.command)
 
     def update_screen(self):
         '''
@@ -130,7 +143,6 @@ class Screen(object):
 
         self.update_lower_line()
 
-        # for _ in range(-self.pos_cursor_str):
         self.move_cursor_back()
         self.window.refresh()
 
@@ -142,12 +154,13 @@ class Screen(object):
         i = self.last_char + 1
         if self.text[i] == '\n':
             i += 1
+
         for n in range(self.width):
-            if i+n < 0:
-                self.down_last = i+n
-                if self.text[i+n] == '\n':
-                    self.down_last = i+n-1
-                    break
+            if i+n < 0 and self.text[i+n] != '\n':
+                pass
+            else:
+                self.down_last = i+n-1
+                break
 
     def update_lower_line(self):
         if self.text[self.last_char] == '\n':
@@ -173,13 +186,6 @@ class Screen(object):
             a = fabs(self.pos_cursor_str + x_cursor) // (self.width+1)
             b = fabs(self.pos_cursor_str + x_cursor+1) % (self.width)
             self.window.move(y_cursor-1-int(a), self.width-int(b)-1)
-
-    def move_cursor_forward(self):
-        y_cursor, x_cursor = curses.getsyx()
-        if x_cursor == self.width-1:
-            self.window.move(y_cursor+1, 0)
-        else:
-            self.window.move(y_cursor, x_cursor+1)
 
     def insert_new_key(self, new_key):
         self.lim_of_arrow -= 1
@@ -210,26 +216,27 @@ class Screen(object):
             for env in printenvCommand.printEnv(command_ls):
                 self.text += env
         else:
-            for path_name in globbing.main(self.command):
-                self.text += path_name
-            # self.p = subprocess.Popen(command_ls,
-            #                           stdout=subprocess.PIPE,
-            #                           stderr=subprocess.STDOUT,
-            #                           stdin=subprocess.PIPE)
+            # for path_name in globbing.main(self.command):
+            #     self.text += path_name
+            self.p = subprocess.Popen(command_ls,
+                                      stdout=subprocess.PIPE,
+                                      stderr=subprocess.STDOUT,
+                                      stdin=subprocess.PIPE)
 
             # if self.command == 'python3 -i':
-            #     self.in_sub = True
-            #     self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
-            #     self.thread1.start()
-            # else:
-            #     self.text += self.p.communicate()[0].decode()
-            #     self.p.terminate()
+            if 'python3' in self.command:
+                self.in_sub = True
+                self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
+                self.thread1.start()
+            else:
+                self.text += self.p.communicate()[0].decode()
+                self.p.terminate()
 
     def run_by_subshell(self):
-        if self.command == 'exit()':
+        if self.command == 'exit()' or self.p.returncode != None:
             self.end_thread = True
             self.in_sub = False
-            self.p.stdin.write(('print("Bye")\n').encode())
+            self.p.stdin.write(('print(" ")\n').encode())
             self.p.stdin.flush()
             sleep(0.5)
             self.p.stdin.close()
@@ -272,13 +279,14 @@ def main():
     the_shell = Screen()
     the_shell.update_screen()
     while True:
-        try:
-            the_shell.input_stream()
-            if the_shell.lk == curses.ascii.ESC:
-                curses.endwin()
-                break
-        except KeyboardInterrupt:
+        # try:
+        the_shell.input_stream()
+        if the_shell.lk == curses.ascii.ESC:
             curses.endwin()
+            break
+        # except KeyboardInterrupt:
+        #     print("asd")
+        #     curses.endwin()
 
 
 if __name__ == '__main__':

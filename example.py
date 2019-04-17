@@ -5,7 +5,7 @@ from threading import Thread
 from time import sleep
 from datetime import datetime
 
-from os import environ
+from os import environ, path
 import cdCommand
 import printenvCommand
 import globbing
@@ -34,11 +34,13 @@ class Screen(object):
         self.p = None
         self.turnback = ''
         self.end_thread = False
+        self.on_display = False
 
     def init_curses(self):
         self.window = curses.initscr()
         self.window.keypad(True)
         self.window.scrollok(True)
+        self.window.timeout(50)
         curses.noecho()
         curses.cbreak()
         curses.start_color()
@@ -51,7 +53,8 @@ class Screen(object):
         '''
         main function
         '''
-        self.update_screen()
+        if not self.on_display:
+            self.update_screen()
         new_key = self.window.getch()
 
         self.lk = new_key
@@ -88,7 +91,7 @@ class Screen(object):
         elif new_key == 261 and self.pos_cursor_str < 0:
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
-        elif new_key == 263:
+        elif new_key == 127:
             # ubuntu 263 Macos 127
             # if button 'delete' was pressed
             self.delete_char()
@@ -103,25 +106,27 @@ class Screen(object):
             self.update_screen()
 
     def dynamic_completion(self):
-        start_idx, ls_of_possibles = dynamic.complete(self.command, self.pos_cursor_str, environ)
-        if len(ls_of_possibles) == 1:
+        start_idx, ls_of_possibles, complt_str = dynamic.complete(self.command, self.pos_cursor_str, environ)
+
+        if complt_str:
             if self.pos_cursor_str != 0:
-                self.command = self.command[:start_idx] + ls_of_possibles[0] + self.command[self.pos_cursor_str:]
-                self.text = self.text[:start_idx] + ls_of_possibles[0] + self.text[self.pos_cursor_str:]
+                self.command = self.command[:start_idx] + complt_str + self.command[self.pos_cursor_str:]
+                self.text = self.text[:start_idx] + complt_str + self.text[self.pos_cursor_str:]
             else:
-                self.command = self.command[:start_idx] + ls_of_possibles[0]
-                self.text = self.text[:start_idx] + ls_of_possibles[0]
+                self.command = self.command[:start_idx] + complt_str
+                self.text = self.text[:start_idx] + complt_str
             self.lim_of_arrow = -len(self.command)
-        elif len(ls_of_possibles) > 1:
+        if ls_of_possibles:
             for pos in ls_of_possibles:
-                self.text += ('\n'+pos)
-            
+                self.text += ('\n'+pos.strip('/').split('/')[-1])
+
             self.text += ('\n' + self.prompt_name + self.command)
 
     def update_screen(self):
         '''
         update window by new conntent
         '''
+        self.on_display = True
         self.text += self.turnback
         self.turnback = ''
         self.height, self.width = self.window.getmaxyx()
@@ -145,7 +150,7 @@ class Screen(object):
 
         self.move_cursor_back()
         self.window.refresh()
-
+        self.on_display = False
         # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(self.lk)
         # self.window.addstr(curses.getsyx()[0], curses.getsyx()[1], txt, curses.color_pair(2))
         # self.window.refresh()
@@ -203,7 +208,8 @@ class Screen(object):
             o = output.readline().decode()
             if o:
                 self.turnback += o
-                self.update_screen()
+                if not self.on_display:
+                    self.update_screen()
         self.end_thread = False
 
     def run_by_curses(self, command_ls):
@@ -279,15 +285,16 @@ def main():
     the_shell = Screen()
     the_shell.update_screen()
     while True:
-        # try:
-        the_shell.input_stream()
-        if the_shell.lk == curses.ascii.ESC:
+        try:
+            the_shell.input_stream()
+            if the_shell.lk == curses.ascii.ESC:
+                curses.endwin()
+                break
+        except KeyboardInterrupt:
             curses.endwin()
             break
-        # except KeyboardInterrupt:
-        #     print("asd")
-        #     curses.endwin()
 
+    quit()
 
 if __name__ == '__main__':
     main()

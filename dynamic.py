@@ -45,11 +45,27 @@ def complete(args, pos_cursor_str, environ):
             for path_name in iglob(str_for_dynamic):
                 if ls_of_args[0] == 'cd':
                     if path.isdir(path_name):
-                        ls_of_possible.append(path_name)
+                        ls_of_possible.append(path_name + '/')
                 else:
                     ls_of_possible.append(path_name)
-
-    return start_idx, ls_of_possible
+    complt_str = ''
+    if len(ls_of_possible) == 1:
+        complt_str = ls_of_possible[0]
+        ls_of_possible.clear()
+    elif len(ls_of_possible) > 1:
+        break_out = False
+        try:
+            for idx, ch in enumerate(ls_of_possible[0]):
+                for pos in ls_of_possible[1:]:
+                    if ch != pos[idx]:
+                        break_out = True
+                        break
+                if break_out:
+                    break
+                complt_str += ch
+        except IndexError:
+            pass
+    return start_idx, ls_of_possible, complt_str
 
 
 # if __name__ == '__main__':

@@ -126,9 +126,9 @@ class Screen(object):
             self.move_cursor_back()
             self.window.refresh()
 
-        # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(self.lk)
-        # self.window.addstr(0, self.width-len(txt)-1, txt, curses.color_pair(2))
-        # self.window.refresh()
+        txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(self.lk)
+        self.window.addstr(0, self.width-len(txt)-1, txt, curses.color_pair(2))
+        self.window.refresh()
 
     def update_upper_line(self):
         i = self.last_char + 1

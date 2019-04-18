@@ -16,9 +16,12 @@ from math import fabs
 class Screen(object):
     def __init__(self):
         self.window = None
-
         self.width = 0
         self.height = 0
+        self.history_ls = ['']
+        self.cur_cmd = 0
+        self.hist_descr = None
+        self.on_display = False
         self.init_curses()
         self.prompt_name = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
         self.text = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
@@ -33,8 +36,7 @@ class Screen(object):
         self.in_sub = False
         self.p = None
         self.turnback = ''
-        self.end_thread = False
-        self.on_display = False
+
 
     def init_curses(self):
         self.window = curses.initscr()
@@ -48,6 +50,15 @@ class Screen(object):
         curses.init_pair(2, curses.COLOR_BLACK, curses.COLOR_CYAN)
         self.current = curses.color_pair(2)
         self.height, self.width = self.window.getmaxyx()
+
+        if path.isfile("/home/nson97/terminal/history_log"):
+            self.hist_descr = open("/home/nson97/terminal/history_log", "r")
+            self.history_ls = self.hist_descr.read().splitlines()
+            self.cur_cmd = len(self.history_ls)
+            self.history_ls.append('')
+        else:
+            self.hist_descr = open("/home/nson97/terminal/history_log", "w")
+        self.hist_descr.close()
 
     def input_stream(self):
         '''
@@ -75,7 +86,14 @@ class Screen(object):
             self.last_char = -1
             self.up_last = -1
             self.down_last = -1
+            if self.command:
+                self.hist_descr = open("/home/nson97/terminal/history_log", "a")
+                self.hist_descr.write('\n'+self.command)
+                self.history_ls[-1] = self.history_ls[self.cur_cmd]
+                self.cur_cmd = len(self.history_ls)
+                self.history_ls.append('')
             self.play_subprocess()
+
             # self.update_screen()
         elif new_key < 127 and new_key > 31:
             # if normal key was pressed
@@ -91,7 +109,7 @@ class Screen(object):
         elif new_key == 261 and self.pos_cursor_str < 0:
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
-        elif new_key == 127:
+        elif new_key == 263:
             # ubuntu 263 Macos 127
             # if button 'delete' was pressed
             self.delete_char()
@@ -100,7 +118,16 @@ class Screen(object):
             # home button
             self.pos_cursor_str = self.lim_of_arrow
         elif new_key == 360:
+            # end button
             self.pos_cursor_str = 0
+        elif new_key == 337:
+            # history up
+            if self.cur_cmd > 0:
+                self.history_move(-1)
+        elif new_key == 336:
+            # history down
+            if self.cur_cmd < len(self.history_ls)-1:
+                self.history_move(1)
         else:
             # any thing else was pressed
             self.update_screen()
@@ -116,6 +143,7 @@ class Screen(object):
                 self.command = self.command[:start_idx] + complt_str
                 self.text = self.text[:start_idx] + complt_str
             self.lim_of_arrow = -len(self.command)
+            self.history_ls[self.cur_cmd] = self.command
         if ls_of_possibles:
             for pos in ls_of_possibles:
                 self.text += ('\n'+pos.strip('/').split('/')[-1])
@@ -151,8 +179,8 @@ class Screen(object):
         self.move_cursor_back()
         self.window.refresh()
         self.on_display = False
-        # txt = str(self.last_char) + ' ' + str(self.up_last) + ' ' + str(self.down_last) + ' ' + str(self.lk)
-        # self.window.addstr(curses.getsyx()[0], curses.getsyx()[1], txt, curses.color_pair(2))
+        # txt = str(self.cur_cmd) + ' ' + str(self.lim_of_arrow)
+        # self.window.addstr(curses.getsyx()[0], self.window.getmaxyx()[1]-len(txt)-2, txt, curses.color_pair(2))
         # self.window.refresh()
 
     def update_upper_line(self):
@@ -202,15 +230,16 @@ class Screen(object):
                         self.text[self.pos_cursor_str:]
             self.command = (self.command[:self.pos_cursor_str] + chr(new_key) +
                             self.command[self.pos_cursor_str:])
+        self.history_ls[self.cur_cmd] = self.command
 
     def threadout(self, name, output):
-        while not self.end_thread:
+        while self.p.poll() is None:
             o = output.readline().decode()
             if o:
                 self.turnback += o
-                if not self.on_display:
-                    self.update_screen()
-        self.end_thread = False
+                self.update_screen()
+        self.in_sub = False
+        self.text += self.prompt_name
 
     def run_by_curses(self, command_ls):
         if command_ls[0] == 'cd':
@@ -222,8 +251,8 @@ class Screen(object):
             for env in printenvCommand.printEnv(command_ls):
                 self.text += env
         else:
-            # for path_name in globbing.main(self.command):
-            #     self.text += path_name
+            if self.command.strip() == 'python3':
+                command_ls.append("-i")
             self.p = subprocess.Popen(command_ls,
                                       stdout=subprocess.PIPE,
                                       stderr=subprocess.STDOUT,
@@ -239,17 +268,8 @@ class Screen(object):
                 self.p.terminate()
 
     def run_by_subshell(self):
-        if self.command == 'exit()' or self.p.returncode != None:
-            self.end_thread = True
-            self.in_sub = False
-            self.p.stdin.write(('print(" ")\n').encode())
-            self.p.stdin.flush()
-            sleep(0.5)
-            self.p.stdin.close()
-            self.p.terminate()
-        else:
-            self.p.stdin.write((self.command+'\n').encode())
-            self.p.stdin.flush()
+        self.p.stdin.write((self.command+'\n').encode())
+        self.p.stdin.flush()
 
     def play_subprocess(self):
         self.lim_of_arrow = 0
@@ -280,6 +300,21 @@ class Screen(object):
                 self.text = self.text[:self.pos_cursor_str-1]
                 self.command = self.command[:self.pos_cursor_str-1]
 
+    def history_move(self, updown):
+        self.cur_cmd += updown
+        if self.lim_of_arrow == 0:
+            self.text = self.text + self.history_ls[self.cur_cmd]
+        else:
+            self.text = self.text[:self.lim_of_arrow] + self.history_ls[self.cur_cmd]
+
+        self.command = self.history_ls[self.cur_cmd]
+
+        self.last_char = -1
+        self.up_last = -1
+        self.down_last = -1
+
+        self.lim_of_arrow = -len(self.command)
+        self.pos_cursor_str = 0
 
 def main():
     the_shell = Screen()

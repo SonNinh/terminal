@@ -16,17 +16,30 @@ from math import fabs
 class Screen(object):
     def __init__(self):
         self.window = None
+        # width of curses window
         self.width = 0
+        # height of curses window
         self.height = 0
+        # list of all executed command
         self.history_ls = ['']
+        # path to histoy log file
+        self.path_history = "/home/nson97/terminal/history_log"
+        # position of current command in history_ls
         self.cur_cmd = 0
+        # descripter of history log file
         self.hist_descr = None
+        # flag for state of display. If display is under update process, flag is True, else False
         self.on_display = False
+        # initial some interactive features for curses window
         self.init_curses()
         self.prompt_name = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
+        # a text stores all input, output, error displayed on curses window
         self.text = 'intek-sh:{}$ '.format(environ['PWD'].replace(environ['HOME'], '~'))
+        # the lastest pressed key
         self.lk = 0
+        # flag for touching lower edged, if last character displayed on window is at last line, flag is True
         self.touch_ending = True
+        #
         self.last_char = -1
         self.up_last = -1
         self.down_last = -1
@@ -37,8 +50,10 @@ class Screen(object):
         self.p = None
         self.turnback = ''
 
-
     def init_curses(self):
+        '''
+        Initial some feature for curses window
+        '''
         self.window = curses.initscr()
         self.window.keypad(True)
         self.window.scrollok(True)
@@ -51,29 +66,31 @@ class Screen(object):
         self.current = curses.color_pair(2)
         self.height, self.width = self.window.getmaxyx()
 
-        if path.isfile("/home/nson97/terminal/history_log"):
-            self.hist_descr = open("/home/nson97/terminal/history_log", "r")
+        # read history from log file
+        if path.isfile(self.path_history):
+            self.hist_descr = open(self.path_history, "r")
             self.history_ls = self.hist_descr.read().splitlines()
             self.cur_cmd = len(self.history_ls)
             self.history_ls.append('')
         else:
-            self.hist_descr = open("/home/nson97/terminal/history_log", "w")
+            self.hist_descr = open(self.path_history, "w")
         self.hist_descr.close()
 
     def input_stream(self):
         '''
         main function
         '''
+        # if update_screen() is not being call by other thread
         if not self.on_display:
             self.update_screen()
-        new_key = self.window.getch()
 
+        new_key = self.window.getch()
         self.lk = new_key
+
         if new_key == curses.KEY_UP:
+            # if all line in window have been filled
             if self.touch_ending:
-                # if all line in window have been filled
                 self.last_char = self.up_last
-                # self.update_screen()
         elif new_key == curses.KEY_DOWN:
             self.last_char = self.down_last
             # self.update_screen()
@@ -87,7 +104,7 @@ class Screen(object):
             self.up_last = -1
             self.down_last = -1
             if self.command:
-                self.hist_descr = open("/home/nson97/terminal/history_log", "a")
+                self.hist_descr = open(self.path_history, "a")
                 self.hist_descr.write('\n'+self.command)
                 self.history_ls[-1] = self.history_ls[self.cur_cmd]
                 self.cur_cmd = len(self.history_ls)

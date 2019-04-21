@@ -13,3 +13,166 @@ ls -la
 asd
 sd
 df
+ls
+pwd
+echo "Doasd"
+echo ${HOME}
+echo 'asdashd'qweq"vchsd\$HOME${HOME}
+echo 'asdashd'qweq"vchsd\$HOME${HOME}
+echo 'asdashd'qweq"vchsd\$HOME${HOME}"
+echo 'asdashd'qweq"vchsd\$HOME${HOME}
+echo 'asdashd'qweq"vchsd\$HOME${HOME}"
+echo 'asdashd'qweq"vchsd\$HOME${HOME}"
+echo "asdads" ${a:=${HOME:asd}}
+echo "asdads" '${a:=${HOME:=asd}}'
+echo "asdads" ${a:=${HOME:=asd}}
+echo asdads $HOME
+echo ${asd:=${qwe:=HOME}}
+echo ${asd:=${qwe:=$HOME}}
+echo ${asd:=${qwe:=${fgh:=HOME}}}
+echo ${asd:=${qwe:=${fgh:=$HOME}}}
+echo '${asd:=${qwe:=${fgh:=$HOME}}}'
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "asda"
+echo 'asda'
+echo "asda"
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo $HOME
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo ${asd:=${qwe:=${fgh:=$HOME}}}
+echo '${asd:=${qwe:=${fgh:=$HOME}}}'
+pwd
+cd
+python3 -i
+import os
+os.environ['HOME']
+exit()
+pwd
+ls -la
+echo ${asd:=${qwe:=${fgh:=$HOME}}}
+pwd
+cd ..
+pwd
+x=asd
+echo $x
+echo $HOME
+echo $HOME || echo HOME
+sdfsf
+echo asd || echo fdg
+echo f"gfdg&&ec"ho fgfdg
+echo f"gfdg&&ec"ho
+echo f"gfdgec"ho fgfdg
+echo "gfdgec"
+echo asdas
+echo "asdas"
+echo '${asd:=${qwe:=${fgh:=$HOME}}}'
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "asd"
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "${asd:=${qwe:=${fgh:=$HOME}}}"
+echo "asdsa"
+mkdir ..........
+ls
+ls
+ls
+ls -la
+echo .*.*
+echo "asd"
+which python
+echo .*
+echo "${abc}
+echo "${abc}"
+abc=123
+echo "${abc}"
+${abc:=123}
+echo abc
+echo "abc"
+echo "$abc"
+echo ${abc:-123}
+echo ${abc:=456}
+echo ${abc-123}
+echo ${abc}
+echo \$HOME$HOME
+unset HOME
+echo $HOME
+cd
+history
+history
+!!
+ls
+ls minish/
+echo fdf$fdgfg${DFGFDG$$FD}
+echo fdf$fdgfg${DFGFDG$HOME}
+echo fdf$fdgfg${DFGFDG$HOME}
+echo fgdfg\$dfgdfh
+echo fgdfg\\$dfgdfh
+echo fgdfg\\$HOME
+echo ~nson
+printenv abc
+export abc=10
+printenv abc
+export 1bc=10
+export abc=10
+printenv abc
+unset abc
+printenv abc
+sadf
+sdf
+sdfsdf
+fghfghf
+ls
+sfsdfsdfls
+sfsls
+ls
+ls
+ls
+python3 asd.py
+sdc
+sdc
+sc
+python3 hello.py
+sfd
+python3 asd.py
+python3 asd.py
+python3 hello.py
+1
+2
+python3 asd.py
+python3 asd.py
+python3 hello.py
+1
+python3 hello.py
+1
+printenv abc
+export abc=10
+export abc=10
+printenv abc
+unset abc
+printenv abc
+echo ${HOME}
+echo $HOME
+echo $HOME
+echo "asadasd\$HOME$HOME"
+echo "asadasd\$HOME'$HOME'"
+echo ${asd:=${aqwe:=${HOME}}}
+a=45
+a=45
+ls
+a=45
+$a
+echo $a
+echo 'asdas
+echo 'asdas'
+echo 'asdsad'
+echo 'asdsad'
+echo 'asdsad
+echo t*
+echo t* d*
+echo ${HOME{
+echo ${HOME}
+echo ${HOME}
+echo ${HOME}
+echo ${HOME}

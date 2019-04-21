@@ -3,14 +3,17 @@ import curses.textpad
 import subprocess
 from threading import Thread
 from time import sleep
-from datetime import datetime
 
 from os import environ, path
 import cdCommand
 import printenvCommand
+import exportCommand
+import unsetCommand
 import globbing
 import dynamic
+import handle_input
 from math import fabs
+
 
 
 class Screen(object):
@@ -39,15 +42,23 @@ class Screen(object):
         self.lk = 0
         # flag for touching lower edged, if last character displayed on window is at last line, flag is True
         self.touch_ending = True
-        #
+        # the on-text position of last character displayed on curses window at current time point
         self.last_char = -1
+        # the on-text position of last character displayed on curses window at next time if display is scrolled up
         self.up_last = -1
+        # the on-text position of last character displayed on curses window at next time if display is scrolled down
         self.down_last = -1
+        # the newest command
         self.command = ''
+        # the farest on-text position which cursor can go to
         self.lim_of_arrow = 0
+        # the on-text position of cursor
         self.pos_cursor_str = 0
+        # if the process has not done, flag set to True, else False
         self.in_sub = False
+        # process object created by subprocess
         self.p = None
+        # return string from subprocess
         self.turnback = ''
 
     def init_curses(self):
@@ -78,7 +89,7 @@ class Screen(object):
 
     def input_stream(self):
         '''
-        main function
+        get input from keyborad and call related fuction
         '''
         # if update_screen() is not being call by other thread
         if not self.on_display:
@@ -88,7 +99,7 @@ class Screen(object):
         self.lk = new_key
 
         if new_key == curses.KEY_UP:
-            # if all line in window have been filled
+            # if all line in window have been filled, screen can be sroll up
             if self.touch_ending:
                 self.last_char = self.up_last
         elif new_key == curses.KEY_DOWN:
@@ -98,22 +109,18 @@ class Screen(object):
             # button 'tab'
             self.dynamic_completion()
         elif new_key == 10:
-            # if button 'enter' was pressed
+            # button 'enter'
             # self.update_screen()
             self.last_char = -1
             self.up_last = -1
             self.down_last = -1
-            if self.command:
-                self.hist_descr = open(self.path_history, "a")
-                self.hist_descr.write('\n'+self.command)
-                self.history_ls[-1] = self.history_ls[self.cur_cmd]
-                self.cur_cmd = len(self.history_ls)
-                self.history_ls.append('')
+            # write command to history log
+            self.record_hitory()
             self.play_subprocess()
 
             # self.update_screen()
         elif new_key < 127 and new_key > 31:
-            # if normal key was pressed
+            # if character key was pressed
             self.last_char = -1
             self.up_last = -1
             self.down_last = -1
@@ -122,7 +129,6 @@ class Screen(object):
         elif new_key == 260 and self.pos_cursor_str > self.lim_of_arrow:
             # if left arrow was pressed and cursor's position has not been over upper limitation
             self.pos_cursor_str -= 1
-            # self.move_cursor_back()
         elif new_key == 261 and self.pos_cursor_str < 0:
             # if left arrow was pressed and cursor's position has not been over lower limitation
             self.pos_cursor_str += 1
@@ -166,6 +172,14 @@ class Screen(object):
                 self.text += ('\n'+pos.strip('/').split('/')[-1])
 
             self.text += ('\n' + self.prompt_name + self.command)
+
+    def record_hitory(self):
+        if self.command:
+            self.hist_descr = open(self.path_history, "a")
+            self.hist_descr.write('\n'+self.command)
+            self.history_ls[-1] = self.history_ls[self.cur_cmd]
+            self.cur_cmd = len(self.history_ls)
+            self.history_ls.append('')
 
     def update_screen(self):
         '''
@@ -267,22 +281,31 @@ class Screen(object):
             command_ls.pop(0)
             for env in printenvCommand.printEnv(command_ls):
                 self.text += env
+        elif command_ls[0] == 'export':
+            command_ls.pop(0)
+            self.text += exportCommand.export(command_ls)
+        elif command_ls[0] == 'unset':
+            command_ls.pop(0)
+            unsetCommand.unset(command_ls)
         else:
             if self.command.strip() == 'python3':
                 command_ls.append("-i")
-            self.p = subprocess.Popen(command_ls,
-                                      stdout=subprocess.PIPE,
-                                      stderr=subprocess.STDOUT,
-                                      stdin=subprocess.PIPE)
+            try:
+                self.p = subprocess.Popen(command_ls,
+                                          stdout=subprocess.PIPE,
+                                          stderr=subprocess.STDOUT,
+                                          stdin=subprocess.PIPE)
 
-            # if self.command == 'python3 -i':
-            if 'python3' in self.command:
-                self.in_sub = True
-                self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
-                self.thread1.start()
-            else:
-                self.text += self.p.communicate()[0].decode()
-                self.p.terminate()
+                # if self.command == 'python3 -i':
+                if 'python3' in self.command:
+                    self.in_sub = True
+                    self.thread1 = Thread(target=self.threadout, args=('Thread-1', self.p.stdout))
+                    self.thread1.start()
+                else:
+                    self.text += self.p.communicate()[0].decode()
+                    self.p.terminate()
+            except FileNotFoundError:
+                self.text += self.command + ': command not found'
 
     def run_by_subshell(self):
         self.p.stdin.write((self.command+'\n').encode())
@@ -292,17 +315,21 @@ class Screen(object):
         self.lim_of_arrow = 0
         self.pos_cursor_str = 0
         self.text += '\n'
-        command_ls = self.command.split()
-        try:
-            if not self.in_sub:
-                self.run_by_curses(command_ls)
-            else:
-                self.run_by_subshell()
 
-            if self.text[-1] != '\n':
-                self.text += '\n'
-        except Exception:
-            pass
+        # try:
+        if not self.in_sub:
+            new_cmd = handle_input.handle_input(self.command)
+            command_ls = new_cmd.split()
+            if command_ls:
+                # command_ls = ['']
+                self.run_by_curses(command_ls)
+        else:
+            self.run_by_subshell()
+
+        if self.text[-1] != '\n':
+            self.text += '\n'
+        # except Exception:
+        #     pass
         self.command = ''
         if not self.in_sub:
             self.text += self.prompt_name
@@ -333,6 +360,7 @@ class Screen(object):
         self.lim_of_arrow = -len(self.command)
         self.pos_cursor_str = 0
 
+
 def main():
     the_shell = Screen()
     the_shell.update_screen()
@@ -343,10 +371,11 @@ def main():
                 curses.endwin()
                 break
         except KeyboardInterrupt:
-            curses.endwin()
-            break
+            the_shell.text += '^C\n'
+            the_shell.text += the_shell.prompt_name
+            the_shell.command = ''
+            pass
 
-    quit()
 
 if __name__ == '__main__':
     main()
